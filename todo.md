@@ -118,20 +118,20 @@
 - [x] Show audio status in export dialog
 
 ## Feature: MP4 Export via FFmpeg
-- [ ] Install ffmpeg on server and add fluent-ffmpeg npm package
-- [ ] Add /api/convert-to-mp4 endpoint that accepts WebM and returns MP4
-- [ ] Update ExportDialog to offer MP4 download option after WebM export
-- [ ] Show conversion progress in export dialog
+- [x] Install ffmpeg on server and add fluent-ffmpeg npm package
+- [x] Add /api/convert-to-mp4 endpoint that accepts WebM and returns MP4
+- [x] Update ExportDialog to offer MP4 download option after WebM export
+- [x] Show conversion progress in export dialog
 
 ## Feature: Panel Transition Effects
-- [ ] Add transition field to panels table (none, fade, swipe-left, swipe-right, zoom-in, zoom-out)
-- [ ] Add transition selector UI in Editor panel settings
-- [ ] Render transitions in preview player canvas
-- [ ] Apply transitions during WebM/MP4 export
+- [x] Add transition field to panels table (none, fade, swipe-left, swipe-right, zoom-in, zoom-out)
+- [x] Add transition selector UI in Editor panel settings
+- [x] Render transitions in preview player canvas
+- [x] Apply transitions during WebM/MP4 export
 
 ## Feature: Sticker/Emoji Layer Type
-- [ ] Add sticker layer type to layer schema
-- [ ] Build built-in sticker picker (emoji + comic effect stickers)
-- [ ] Add sticker layer rendering on canvas
-- [ ] Support sticker animation (bounce, spin, pulse)
-- [ ] Add sticker layer to export pipeline
+- [x] Add sticker layer type to layer schema (stickers JSON column in panels)
+- [x] Build built-in sticker picker (100+ emojis in 8 categories)
+- [x] Add sticker layer rendering on canvas (drag, resize, delete)
+- [x] Support sticker animation (bounce, spin, pulse via StickerLayer)
+- [x] Add sticker layer to export pipeline (drawStickers in ExportDialog)

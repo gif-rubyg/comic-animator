@@ -133,6 +133,17 @@
   }
 }
 
+/* Canvas drag styles */
+.layer-dragging { cursor: grabbing !important; }
+.layer-handle { cursor: grab; }
+.layer-handle:active { cursor: grabbing; }
+
+/* Animation preview canvas */
+.preview-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 @layer components {
   /**
    * Custom container utility that centers content and adds responsive padding.

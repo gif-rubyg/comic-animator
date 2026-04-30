@@ -1,5 +1,27 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1777534232236,
+      "tag": "0000_ambitious_vertigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1777534964833,
+      "tag": "0001_chilly_natasha_romanoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777535061399,
+      "tag": "0002_cooing_living_lightning",
+      "breakpoints": true
+    }
+  ]
 }

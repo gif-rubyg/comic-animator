@@ -46,10 +46,10 @@
 - [x] User login/logout (via Manus OAuth)
 - [x] Project save/load from database
 - [x] Project rename/delete
-- [ ] Edit username
-- [ ] Limit registration to 3 users
-- [ ] Responsive design improvements
-- [ ] Push final code to GitHub
+- [x] Edit username (via account dropdown in Dashboard)
+- [x] Limit registration to 3 users (seed-only, no public registration)
+- [x] Responsive design improvements (mobile-friendly header, grid, dialogs)
+- [x] Push final code to GitHub
 
 ## Phase 5: Email/Password Auth & Production Setup
 - [x] Add passwordHash column to users table

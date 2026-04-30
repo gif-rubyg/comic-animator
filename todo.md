@@ -97,3 +97,22 @@
 - [x] Panel audio in Editor Panel Settings tab
 - [x] Project background music in Editor Panel Settings tab
 - [x] All 18 tests still passing
+
+## Feature: Thumbnail Generation
+- [ ] Add thumbnailUrl column to projects table in DB
+- [ ] Auto-capture canvas snapshot as thumbnail when publishing to gallery
+- [ ] Show thumbnail in Gallery project cards
+- [ ] Show thumbnail in Dashboard project cards
+
+## Feature: Text/Caption Overlays
+- [ ] Add text layer type to layer schema (text, font, size, color, bold, italic, align)
+- [ ] Build TextLayer component with inline editing
+- [ ] Support animation on text layers (fade in/out, slide in, typewriter)
+- [ ] Render text layers in Editor canvas overlay
+- [ ] Render text layers in preview player
+
+## Feature: Audio in Export
+- [ ] Mix panel audio tracks into WebM export using Web Audio API
+- [ ] Mix project background music into WebM export
+- [ ] Sync audio timing with panel duration during export
+- [ ] Show audio status in export dialog

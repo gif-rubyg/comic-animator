@@ -122,6 +122,7 @@ export const appRouter = router({
       isPublic: z.number().optional(),
       bgMusicUrl: z.string().nullable().optional(),
       bgMusicVolume: z.number().optional(),
+      thumbnailUrl: z.string().nullable().optional(),
     })).mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const project = await getProjectById(id);

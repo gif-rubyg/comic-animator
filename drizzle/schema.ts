@@ -29,6 +29,7 @@ export const projects = mysqlTable("projects", {
   likesCount: int("likesCount").notNull().default(0),
   bgMusicUrl: text("bgMusicUrl"),
   bgMusicVolume: float("bgMusicVolume").notNull().default(0.8),
+  thumbnailUrl: text("thumbnailUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

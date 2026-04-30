@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Film, Plus, Trash2, ArrowLeft, Upload, Play, Pause,
   Layers, Settings, ChevronUp, ChevronDown, FlipHorizontal,
-  Download, Eye, EyeOff, Globe, MessageSquare, Music
+  Download, Eye, EyeOff, Globe, MessageSquare, Music, Type
 } from "lucide-react";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { ANIMATION_CATALOG, computeLayerState, stateToTransform, type LayerAnimation, type AnimationType } from "@/lib/animationEngine";
@@ -19,6 +19,7 @@ import AnimationPreview from "@/components/AnimationPreview";
 import ExportDialog from "@/components/ExportDialog";
 import SpeechBubbleLayer from "@/components/SpeechBubbleLayer";
 import AudioPanel from "@/components/AudioPanel";
+import TextLayer, { type TextLayerData } from "@/components/TextLayer";
 import type { SpeechBubble } from "../../../drizzle/schema";
 
 interface LocalLayer {
@@ -61,6 +62,8 @@ export default function Editor() {
   const [playTime, setPlayTime] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [showBubbles, setShowBubbles] = useState(true);
+  const [textLayers, setTextLayers] = useState<TextLayerData[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, lx: 0, ly: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -234,6 +237,41 @@ export default function Editor() {
     if (layer) await updateLayer.mutateAsync({ id: selectedLayerId, x: layer.x, y: layer.y });
   }, [isDragging, selectedLayerId, layers]);
 
+  // Add a text/caption layer
+  const addTextLayer = () => {
+    const newLayer: TextLayerData = {
+      id: `text-${Date.now()}`,
+      text: "Caption text",
+      x: 50, y: 50,
+      fontSize: 24,
+      color: "#ffffff",
+      bgColor: "transparent",
+      bold: false, italic: false,
+      align: "center",
+      animation: "none",
+      animationDuration: 1,
+    };
+    setTextLayers(prev => [...prev, newLayer]);
+    setSelectedTextId(newLayer.id);
+  };
+
+  // Capture thumbnail from first panel background
+  const captureThumbnail = useCallback(async (): Promise<string | null> => {
+    const firstPanel = panels[0];
+    if (!firstPanel?.backgroundUrl) return null;
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = project?.aspectRatio === "9:16" ? 568 : 240;
+      const ctx = canvas.getContext("2d")!;
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; img.src = firstPanel.backgroundUrl!; });
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.7);
+    } catch { return null; }
+  }, [panels, project?.aspectRatio]);
+
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
@@ -251,10 +289,15 @@ export default function Editor() {
         </div>
         <Button
           size="sm" variant="outline"
-          onClick={() => {
+          onClick={async () => {
             if (!project) return;
             const newVal = project.isPublic ? 0 : 1;
-            updateProject.mutate({ id: project.id, isPublic: newVal });
+            // Capture thumbnail when publishing
+            let thumbnailUrl: string | null | undefined = undefined;
+            if (newVal === 1) {
+              thumbnailUrl = await captureThumbnail();
+            }
+            updateProject.mutate({ id: project.id, isPublic: newVal, ...(thumbnailUrl !== undefined ? { thumbnailUrl } : {}) });
             toast.success(newVal ? "Published to gallery!" : "Removed from gallery");
           }}
           className="gap-2"
@@ -395,6 +438,19 @@ export default function Editor() {
                     </div>
                   );
                 })}
+              {/* Text/Caption Layers */}
+                {textLayers.map((tl) => (
+                  <TextLayer
+                    key={tl.id}
+                    layer={tl}
+                    canvasWidth={canvasW}
+                    canvasHeight={canvasH}
+                    selected={selectedTextId === tl.id}
+                    onSelect={() => setSelectedTextId(tl.id)}
+                    onChange={(updated) => setTextLayers(prev => prev.map(l => l.id === tl.id ? updated : l))}
+                    onDelete={() => { setTextLayers(prev => prev.filter(l => l.id !== tl.id)); setSelectedTextId(null); }}
+                  />
+                ))}
               </div>
 
               {/* Playback controls */}
@@ -419,6 +475,13 @@ export default function Editor() {
                   title="Toggle speech bubbles visibility">
                   <MessageSquare className="w-3 h-3" />
                   {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
+                </Button>
+                <Button size="sm" variant="ghost"
+                  onClick={addTextLayer}
+                  className="gap-1 text-xs"
+                  title="Add text/caption overlay">
+                  <Type className="w-3 h-3" />
+                  Add Text
                 </Button>
               </div>
             </div>

@@ -20,6 +20,7 @@ import ExportDialog from "@/components/ExportDialog";
 import SpeechBubbleLayer from "@/components/SpeechBubbleLayer";
 import AudioPanel from "@/components/AudioPanel";
 import TextLayer, { type TextLayerData } from "@/components/TextLayer";
+import StickerLayer, { type StickerData } from "@/components/StickerLayer";
 import type { SpeechBubble } from "../../../drizzle/schema";
 
 interface LocalLayer {
@@ -63,6 +64,7 @@ export default function Editor() {
   const [showExport, setShowExport] = useState(false);
   const [showBubbles, setShowBubbles] = useState(true);
   const [textLayers, setTextLayers] = useState<TextLayerData[]>([]);
+  const [panelStickers, setPanelStickers] = useState<Record<number, StickerData[]>>({});
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, lx: 0, ly: 0 });
@@ -95,6 +97,14 @@ export default function Editor() {
       if (panelsData.length > 0 && !selectedPanelId) {
         setSelectedPanelId(panelsData[0].id);
       }
+      // Load saved stickers per panel
+      const stickerMap: Record<number, StickerData[]> = {};
+      for (const p of panelsData as any[]) {
+        if (p.stickers) {
+          try { stickerMap[p.id] = JSON.parse(p.stickers); } catch {}
+        }
+      }
+      setPanelStickers(stickerMap);
     }
   }, [panelsData]);
 
@@ -451,6 +461,18 @@ export default function Editor() {
                     onDelete={() => { setTextLayers(prev => prev.filter(l => l.id !== tl.id)); setSelectedTextId(null); }}
                   />
                 ))}
+              {/* Sticker Layer */}
+              {selectedPanel && (
+                <StickerLayer
+                  stickers={panelStickers[selectedPanel.id] || []}
+                  onChange={(stickers) => {
+                    setPanelStickers(prev => ({ ...prev, [selectedPanel.id]: stickers }));
+                    updatePanel.mutate({ id: selectedPanel.id, stickers: JSON.stringify(stickers) });
+                  }}
+                  canvasWidth={canvasW}
+                  canvasHeight={canvasH}
+                />
+              )}
               </div>
 
               {/* Playback controls */}

@@ -55,7 +55,8 @@ export const panels = mysqlTable("panels", {
     startX: number; startY: number; startScale: number;
     endX: number; endY: number; endScale: number;
   } | null>(),
-  speechBubbles: json("speechBubbles").$type<SpeechBubble[]>(),
+  speechBubbles: text("speechBubbles").$type<SpeechBubble[]>(),
+  stickers: text("stickers"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

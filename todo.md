@@ -116,3 +116,22 @@
 - [x] Mix project background music into WebM export
 - [x] Sync audio timing with panel duration during export
 - [x] Show audio status in export dialog
+
+## Feature: MP4 Export via FFmpeg
+- [ ] Install ffmpeg on server and add fluent-ffmpeg npm package
+- [ ] Add /api/convert-to-mp4 endpoint that accepts WebM and returns MP4
+- [ ] Update ExportDialog to offer MP4 download option after WebM export
+- [ ] Show conversion progress in export dialog
+
+## Feature: Panel Transition Effects
+- [ ] Add transition field to panels table (none, fade, swipe-left, swipe-right, zoom-in, zoom-out)
+- [ ] Add transition selector UI in Editor panel settings
+- [ ] Render transitions in preview player canvas
+- [ ] Apply transitions during WebM/MP4 export
+
+## Feature: Sticker/Emoji Layer Type
+- [ ] Add sticker layer type to layer schema
+- [ ] Build built-in sticker picker (emoji + comic effect stickers)
+- [ ] Add sticker layer rendering on canvas
+- [ ] Support sticker animation (bounce, spin, pulse)
+- [ ] Add sticker layer to export pipeline

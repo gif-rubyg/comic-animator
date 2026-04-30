@@ -5,6 +5,7 @@ import net from "net";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import ffmpeg from "fluent-ffmpeg";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -66,6 +67,34 @@ async function startServer() {
 
   // Serve uploaded files
   app.use("/uploads", express.static(UPLOADS_DIR));
+
+  // MP4 conversion endpoint
+  const webmUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
+  app.post("/api/convert-to-mp4", webmUpload.single("file"), async (req: any, res: any) => {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const inputPath = path.join(UPLOADS_DIR, `input-${Date.now()}.webm`);
+    const outputPath = path.join(UPLOADS_DIR, `output-${Date.now()}.mp4`);
+    try {
+      fs.writeFileSync(inputPath, req.file.buffer);
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(inputPath)
+          .outputOptions(["-c:v libx264", "-preset fast", "-crf 23", "-c:a aac", "-movflags +faststart"])
+          .output(outputPath)
+          .on("end", () => resolve())
+          .on("error", (err: Error) => reject(err))
+          .run();
+      });
+      const mp4Buffer = fs.readFileSync(outputPath);
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Content-Disposition", `attachment; filename="comic-reel.mp4"`);
+      res.send(mp4Buffer);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Conversion failed" });
+    } finally {
+      if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    }
+  });
 
   // File upload endpoint
   app.post("/api/upload", (req: any, res: any, next: any) => {

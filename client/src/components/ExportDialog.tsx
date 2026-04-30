@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { computeLayerState } from "@/lib/animationEngine";
 import { toast } from "sonner";
-import { Download, Loader2, Music, Volume2 } from "lucide-react";
+import { Download, Loader2, Music, Volume2, FileVideo } from "lucide-react";
 
 interface Props {
   project: { id: number; name: string; aspectRatio: string; bgMusicUrl?: string | null; bgMusicVolume?: number };
@@ -54,6 +54,21 @@ async function fetchAllLayers(panels: any[]): Promise<Record<number, any[]>> {
     })
   );
   return result;
+}
+
+/** Draw stickers/emojis onto canvas context */
+function drawStickers(ctx: CanvasRenderingContext2D, stickers: any[], exportW: number, exportH: number) {
+  if (!stickers?.length) return;
+  for (const s of stickers) {
+    const sx = (s.x / 100) * exportW;
+    const sy = (s.y / 100) * exportH;
+    const fontSize = Math.max(16, Math.min((s.size / 100) * exportW, 120));
+    ctx.save();
+    ctx.font = `${fontSize}px serif`;
+    ctx.textBaseline = "top";
+    ctx.fillText(s.emoji, sx, sy);
+    ctx.restore();
+  }
 }
 
 /** Draw speech bubbles onto canvas context */
@@ -143,6 +158,8 @@ export default function ExportDialog({ project, panels, onClose }: Props) {
   const [exportStatus, setExportStatus] = useState("");
   const [fps, setFps] = useState("24");
   const [quality, setQuality] = useState("high");
+  const [convertingMp4, setConvertingMp4] = useState(false);
+  const [webmBlob, setWebmBlob] = useState<Blob | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const is916 = project.aspectRatio === "9:16";
@@ -266,62 +283,112 @@ export default function ExportDialog({ project, panels, onClose }: Props) {
         let panelIdx = 0;
         let panelTime = 0;
         let lastTs = 0;
+        // Transition state: inTransition=true means we're blending current→next panel
+        let inTransition = false;
+        let transitionTime = 0;
+        const TRANS_DUR = 0.4; // seconds for transition
 
-        const renderFrame = (ts: number) => {
-          const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.05) : 1 / fpsNum;
-          lastTs = ts;
-          elapsed += dt;
-          panelTime += dt;
-
-          const panel = panels[panelIdx];
-          if (!panel) { recorder.stop(); return; }
-
-          const layers = allLayers[panel.id] || [];
-
-          ctx.clearRect(0, 0, exportW, exportH);
-          ctx.fillStyle = "#000";
-          ctx.fillRect(0, 0, exportW, exportH);
-
-          // Background
-          if (panel.backgroundUrl) {
-            const bg = imgCache.get(panel.backgroundUrl);
+        /** Draw a single panel's content onto ctx with given alpha/offset */
+        function drawPanel(p: any, layers: any[], alpha: number, offsetX = 0, offsetY = 0, scale = 1) {
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          if (offsetX !== 0 || offsetY !== 0 || scale !== 1) {
+            ctx.translate(offsetX, offsetY);
+            if (scale !== 1) ctx.scale(scale, scale);
+          }
+          if (p.backgroundUrl) {
+            const bg = imgCache.get(p.backgroundUrl);
             if (bg) ctx.drawImage(bg, 0, 0, exportW, exportH);
           }
-
-          // Character layers
-          const sortedLayers = [...layers].sort((a: any, b: any) => a.zIndex - b.zIndex);
-          for (const layer of sortedLayers as any[]) {
+          const sorted = [...layers].sort((a: any, b: any) => a.zIndex - b.zIndex);
+          for (const layer of sorted as any[]) {
             if (!layer.imageUrl) continue;
             const img = imgCache.get(layer.imageUrl);
             if (!img) continue;
-
             const lx = (layer.x / 100) * exportW;
             const ly = (layer.y / 100) * exportH;
             const lw = (layer.width / 100) * exportW;
             const lh = (layer.height / 100) * exportH;
             const state = computeLayerState(panelTime, layer.animations || [], exportW);
-
             ctx.save();
-            ctx.globalAlpha = state.opacity;
+            ctx.globalAlpha = alpha * state.opacity;
             ctx.translate(lx + lw / 2 + state.translateX, ly + lh + state.translateY);
             ctx.rotate((state.rotate * Math.PI) / 180);
             ctx.scale(state.scaleX * (layer.flipX ? -1 : 1), state.scaleY);
-            ctx.transform(1, Math.tan((state.skewY * Math.PI) / 180), Math.tan((state.skewX * Math.PI) / 180), 1, 0, 0);
             ctx.drawImage(img, -lw / 2, -lh, lw, lh);
             ctx.restore();
           }
+          if (p.speechBubbles?.length) drawSpeechBubbles(ctx, p.speechBubbles, exportW, exportH);
+          if (p.stickers) { try { const s = typeof p.stickers === 'string' ? JSON.parse(p.stickers) : p.stickers; drawStickers(ctx, s, exportW, exportH); } catch {} }
+          ctx.restore();
+        }
 
-          // Speech bubbles
-          if (panel.speechBubbles?.length) {
-            drawSpeechBubbles(ctx, panel.speechBubbles, exportW, exportH);
+        const renderFrame = (ts: number) => {
+          const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.05) : 1 / fpsNum;
+          lastTs = ts;
+          elapsed += dt;
+
+          const panel = panels[panelIdx];
+          if (!panel) { recorder.stop(); return; }
+
+          const layers = allLayers[panel.id] || [];
+          ctx.clearRect(0, 0, exportW, exportH);
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, exportW, exportH);
+
+          if (inTransition) {
+            transitionTime += dt;
+            const progress = Math.min(transitionTime / TRANS_DUR, 1);
+            const prevPanel = panels[panelIdx - 1];
+            const prevLayers = allLayers[prevPanel?.id] || [];
+            const nextPanel = panel;
+            const nextLayers = layers;
+            const transition = nextPanel.transition || "fade";
+
+            if (transition === "fade") {
+              drawPanel(prevPanel, prevLayers, 1 - progress);
+              drawPanel(nextPanel, nextLayers, progress);
+            } else if (transition === "slide-left") {
+              drawPanel(prevPanel, prevLayers, 1, -progress * exportW, 0);
+              drawPanel(nextPanel, nextLayers, 1, exportW - progress * exportW, 0);
+            } else if (transition === "slide-right") {
+              drawPanel(prevPanel, prevLayers, 1, progress * exportW, 0);
+              drawPanel(nextPanel, nextLayers, 1, -(exportW - progress * exportW), 0);
+            } else if (transition === "zoom-in") {
+              drawPanel(prevPanel, prevLayers, 1 - progress);
+              const s = 0.5 + 0.5 * progress;
+              ctx.save();
+              ctx.translate(exportW / 2 * (1 - s), exportH / 2 * (1 - s));
+              drawPanel(nextPanel, nextLayers, progress, 0, 0, s);
+              ctx.restore();
+            } else if (transition === "zoom-out") {
+              const s = 1.5 - 0.5 * progress;
+              ctx.save();
+              ctx.translate(exportW / 2 * (1 - s), exportH / 2 * (1 - s));
+              drawPanel(prevPanel, prevLayers, 1 - progress, 0, 0, s);
+              ctx.restore();
+              drawPanel(nextPanel, nextLayers, progress);
+            } else {
+              drawPanel(prevPanel, prevLayers, 1 - progress);
+              drawPanel(nextPanel, nextLayers, progress);
+            }
+
+            if (progress >= 1) { inTransition = false; transitionTime = 0; }
+          } else {
+            panelTime += dt;
+            drawPanel(panel, layers, 1);
+
+            if (panelTime >= panel.duration) {
+              panelIdx++;
+              panelTime = 0;
+              if (panelIdx < panels.length) {
+                const nextTrans = panels[panelIdx]?.transition || "none";
+                if (nextTrans !== "none") { inTransition = true; transitionTime = 0; }
+              }
+            }
           }
 
           setExportProgress(Math.min(99, (elapsed / totalDuration) * 100));
-
-          if (panelTime >= panel.duration) {
-            panelIdx++;
-            panelTime = 0;
-          }
 
           if (panelIdx < panels.length) {
             requestAnimationFrame(renderFrame);
@@ -337,6 +404,7 @@ export default function ExportDialog({ project, panels, onClose }: Props) {
 
       setExportStatus("Saving file...");
       const blob = new Blob(chunks, { type: mimeType });
+      setWebmBlob(blob);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -345,9 +413,8 @@ export default function ExportDialog({ project, panels, onClose }: Props) {
       URL.revokeObjectURL(url);
 
       setExportProgress(100);
-      setExportStatus("Done!");
-      toast.success("Reel exported! Check your downloads.");
-      setTimeout(onClose, 1500);
+      setExportStatus("Done! You can also download as MP4 below.");
+      toast.success("WebM exported! Use 'Download MP4' for social media.");
     } catch (err: any) {
       toast.error("Export failed: " + err.message);
       console.error(err);
@@ -424,8 +491,43 @@ export default function ExportDialog({ project, panels, onClose }: Props) {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Output: WebM video{hasAudio ? " with audio" : ""} — supported by all major platforms. Downloads automatically when ready.
+            Export as WebM first, then convert to MP4 for Instagram, TikTok &amp; YouTube Shorts.
           </p>
+          {webmBlob && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm">
+              <p className="text-green-400 font-medium mb-2">✓ WebM ready — convert to MP4?</p>
+              <Button
+                size="sm"
+                className="w-full gap-2 bg-green-600 hover:bg-green-700"
+                disabled={convertingMp4}
+                onClick={async () => {
+                  setConvertingMp4(true);
+                  setExportStatus("Converting to MP4...");
+                  try {
+                    const formData = new FormData();
+                    formData.append("file", webmBlob, "reel.webm");
+                    const resp = await fetch("/api/convert-to-mp4", { method: "POST", body: formData });
+                    if (!resp.ok) throw new Error((await resp.json()).error || "Conversion failed");
+                    const mp4Blob = await resp.blob();
+                    const url = URL.createObjectURL(mp4Blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `${project.name.replace(/\s+/g, "-")}-reel.mp4`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("MP4 downloaded!");
+                    setExportStatus("MP4 ready!");
+                  } catch (err: any) {
+                    toast.error("MP4 conversion failed: " + err.message);
+                  } finally {
+                    setConvertingMp4(false);
+                  }
+                }}
+              >
+                {convertingMp4 ? <><Loader2 className="w-4 h-4 animate-spin" />Converting...</> : <><FileVideo className="w-4 h-4" />Download as MP4</>}
+              </Button>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

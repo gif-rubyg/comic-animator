@@ -165,6 +165,7 @@ export const appRouter = router({
       transitionDuration: z.number().optional(),
       panZoom: PanZoomSchema.optional(),
       speechBubbles: z.array(SpeechBubbleSchema).optional(),
+      stickers: z.string().optional(),
       audioUrl: z.string().nullable().optional(),
       audioVolume: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
@@ -182,6 +183,7 @@ export const appRouter = router({
       transitionDuration: z.number().optional(),
       panZoom: PanZoomSchema.optional(),
       speechBubbles: z.array(SpeechBubbleSchema).optional(),
+      stickers: z.string().optional(),
       audioUrl: z.string().nullable().optional(),
       audioVolume: z.number().optional(),
     })).mutation(async ({ input }) => {

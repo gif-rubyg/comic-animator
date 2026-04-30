@@ -1,8 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
-import { Film, Sparkles, Zap, Users } from "lucide-react";
+import { Film, Sparkles, Zap } from "lucide-react";
 import { useEffect } from "react";
 
 export default function Home() {
@@ -25,7 +24,7 @@ export default function Home() {
           <Film className="w-7 h-7 text-primary" />
           <span className="text-xl font-bold text-foreground">Comic Animator</span>
         </div>
-        <Button onClick={() => window.location.href = getLoginUrl()}>
+        <Button onClick={() => navigate("/login")}>
           Sign In
         </Button>
       </header>
@@ -48,9 +47,9 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 flex-wrap justify-center">
-          <Button size="lg" onClick={() => window.location.href = getLoginUrl()} className="gap-2">
+          <Button size="lg" onClick={() => navigate("/login")} className="gap-2">
             <Zap className="w-5 h-5" />
-            Get Started Free
+            Get Started
           </Button>
         </div>
 

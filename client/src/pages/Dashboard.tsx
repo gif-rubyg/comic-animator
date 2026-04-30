@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { Film, Plus, Trash2, Edit2, LogOut, Clock, Ratio, Pencil } from "lucide-react";
-import { useState } from "react";
-import { getLoginUrl } from "@/const";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -27,7 +26,7 @@ export default function Dashboard() {
   });
 
   const createProject = trpc.projects.create.useMutation({
-    onSuccess: (data) => { setShowNewProject(false); navigate(`/editor/${data.id}`); },
+    onSuccess: (data) => { setShowNewProject(false); if (data?.id) navigate(`/editor/${data.id}`); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -49,10 +48,11 @@ export default function Dashboard() {
     );
   }
 
-  if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
-    return null;
-  }
+  useEffect(() => {
+    if (!loading && !isAuthenticated) navigate("/login");
+  }, [loading, isAuthenticated]);
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -50,3 +50,16 @@
 - [ ] Limit registration to 3 users
 - [ ] Responsive design improvements
 - [ ] Push final code to GitHub
+
+## Phase 5: Email/Password Auth & Production Setup
+- [x] Add passwordHash column to users table
+- [x] Add email/password login tRPC procedures (login, logout, me, changePassword)
+- [x] Replace Manus OAuth session with JWT cookie auth
+- [x] Build Login page (email + password form)
+- [x] Switch file uploads to local disk (multer + Express static)
+- [x] Add seed script for 3 user accounts (scripts/seed.mjs)
+- [x] Add PM2 ecosystem config (ecosystem.config.cjs)
+- [x] Add Nginx config template (nginx.conf)
+- [x] Add deployment guide (DEPLOY.md)
+- [x] Push all to GitHub
+- [x] 18 tests passing (animation engine + auth)

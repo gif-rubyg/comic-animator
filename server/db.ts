@@ -1,7 +1,7 @@
-import { eq, asc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, projects, panels, layers, InsertProject, InsertPanel, InsertLayer, Project, Panel, Layer } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { users, projects, panels, layers } from "../drizzle/schema";
+import type { InsertUser, InsertProject, InsertPanel, InsertLayer } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -17,101 +17,127 @@ export async function getDb() {
   return _db;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) throw new Error("User openId is required for upsert");
-  const db = await getDb();
-  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
-  try {
-    const values: InsertUser = { openId: user.openId };
-    const updateSet: Record<string, unknown> = {};
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-    textFields.forEach(assignNullable);
-    if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
-    if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
-    else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
-    if (!values.lastSignedIn) values.lastSignedIn = new Date();
-    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
-  } catch (error) { console.error("[Database] Failed to upsert user:", error); throw error; }
-}
+// ─── Users ───────────────────────────────────────────────────────────────────
 
-export async function getUserByOpenId(openId: string) {
+export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
 }
 
-// ─── Projects ───────────────────────────────────────────────────────────────
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0];
+}
 
-export async function getProjectsByUser(userId: number): Promise<Project[]> {
+export async function createUser(data: InsertUser) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(users).values(data);
+  return getUserByEmail(data.email);
+}
+
+export async function updateUserLastSignedIn(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, id));
+}
+
+export async function updateUserName(id: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ name }).where(eq(users.id, id));
+}
+
+export async function updateUserPassword(id: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ passwordHash }).where(eq(users.id, id));
+}
+
+export async function countUsers() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select().from(users);
+  return result.length;
+}
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+export async function getProjectsByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(projects).where(eq(projects.userId, userId));
+  return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.updatedAt));
 }
 
-export async function getProjectById(id: number): Promise<Project | undefined> {
+export async function getProjectById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
   return result[0];
 }
 
-export async function createProject(data: InsertProject): Promise<number> {
+export async function createProject(data: InsertProject) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(projects).values(data);
-  return (result as any)[0].insertId;
+  const insertId = (result as any)[0]?.insertId;
+  return getProjectById(insertId);
 }
 
-export async function updateProject(id: number, data: Partial<InsertProject>): Promise<void> {
+export async function updateProject(id: number, data: Partial<InsertProject>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(projects).set(data).where(eq(projects.id, id));
+  return getProjectById(id);
 }
 
-export async function deleteProject(id: number): Promise<void> {
+export async function deleteProject(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // Delete layers and panels first
-  const panelList = await db.select().from(panels).where(eq(panels.projectId, id));
-  for (const panel of panelList) {
+  // Delete layers for all panels first
+  const projectPanels = await db.select().from(panels).where(eq(panels.projectId, id));
+  for (const panel of projectPanels) {
     await db.delete(layers).where(eq(layers.panelId, panel.id));
   }
   await db.delete(panels).where(eq(panels.projectId, id));
   await db.delete(projects).where(eq(projects.id, id));
 }
 
-// ─── Panels ─────────────────────────────────────────────────────────────────
+// ─── Panels ──────────────────────────────────────────────────────────────────
 
-export async function getPanelsByProject(projectId: number): Promise<Panel[]> {
+export async function getPanelsByProject(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(panels).where(eq(panels.projectId, projectId)).orderBy(asc(panels.order));
+  return db.select().from(panels).where(eq(panels.projectId, projectId)).orderBy(panels.order);
 }
 
-export async function createPanel(data: InsertPanel): Promise<number> {
+export async function getPanelById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(panels).where(eq(panels.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createPanel(data: InsertPanel) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(panels).values(data);
-  return (result as any)[0].insertId;
+  const insertId = (result as any)[0]?.insertId;
+  return getPanelById(insertId);
 }
 
-export async function updatePanel(id: number, data: Partial<InsertPanel>): Promise<void> {
+export async function updatePanel(id: number, data: Partial<InsertPanel>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(panels).set(data).where(eq(panels.id, id));
+  return getPanelById(id);
 }
 
-export async function deletePanel(id: number): Promise<void> {
+export async function deletePanel(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(layers).where(eq(layers.panelId, id));
@@ -120,26 +146,35 @@ export async function deletePanel(id: number): Promise<void> {
 
 // ─── Layers ──────────────────────────────────────────────────────────────────
 
-export async function getLayersByPanel(panelId: number): Promise<Layer[]> {
+export async function getLayersByPanel(panelId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(layers).where(eq(layers.panelId, panelId)).orderBy(asc(layers.zIndex));
+  return db.select().from(layers).where(eq(layers.panelId, panelId)).orderBy(layers.zIndex);
 }
 
-export async function createLayer(data: InsertLayer): Promise<number> {
+export async function getLayerById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(layers).where(eq(layers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createLayer(data: InsertLayer) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(layers).values(data);
-  return (result as any)[0].insertId;
+  const insertId = (result as any)[0]?.insertId;
+  return getLayerById(insertId);
 }
 
-export async function updateLayer(id: number, data: Partial<InsertLayer>): Promise<void> {
+export async function updateLayer(id: number, data: Partial<InsertLayer>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(layers).set(data).where(eq(layers.id, id));
+  return getLayerById(id);
 }
 
-export async function deleteLayer(id: number): Promise<void> {
+export async function deleteLayer(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(layers).where(eq(layers.id, id));

@@ -23,7 +23,18 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
+const ALLOWED_AUDIO_TYPES = new Set(["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/x-wav", "audio/m4a", "audio/mp4", "audio/aac", "audio/x-m4a"]);
+
+const fileFilter = (_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (ALLOWED_IMAGE_TYPES.has(file.mimetype) || ALLOWED_AUDIO_TYPES.has(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: images (JPG/PNG/WebP/GIF) and audio (MP3/WAV/OGG/M4A).`));
+  }
+};
+
+const upload = multer({ storage, fileFilter, limits: { fileSize: 50 * 1024 * 1024 } });
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -57,10 +68,21 @@ async function startServer() {
   app.use("/uploads", express.static(UPLOADS_DIR));
 
   // File upload endpoint
-  app.post("/api/upload", upload.single("file"), (req: any, res: any) => {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const url = `/uploads/${req.file.filename}`;
-    res.json({ url, filename: req.file.filename });
+  app.post("/api/upload", (req: any, res: any, next: any) => {
+    upload.single("file")(req, res, (err: any) => {
+      if (err) {
+        const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+        return res.status(status).json({ error: err.message || "Upload failed" });
+      }
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      // Enforce 16MB limit for audio files
+      if (ALLOWED_AUDIO_TYPES.has(req.file.mimetype) && req.file.size > 16 * 1024 * 1024) {
+        fs.unlinkSync(req.file.path);
+        return res.status(413).json({ error: "Audio files must be under 16 MB" });
+      }
+      const url = `/uploads/${req.file.filename}`;
+      res.json({ url, filename: req.file.filename });
+    });
   });
   // tRPC API
   app.use(

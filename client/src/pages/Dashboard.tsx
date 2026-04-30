@@ -170,7 +170,11 @@ export default function Dashboard() {
                   style={{ aspectRatio: project.aspectRatio === "9:16" ? "9/16" : "4/3", maxHeight: 180 }}
                   onClick={() => navigate(`/editor/${project.id}`)}
                 >
-                  <Film className="w-10 h-10 text-muted-foreground/30" />
+                  {(project as any).thumbnailUrl ? (
+                    <img src={(project as any).thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Film className="w-10 h-10 text-muted-foreground/30" />
+                  )}
                 </div>
 
                 <div className="p-4 space-y-3">

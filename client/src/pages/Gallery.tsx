@@ -47,9 +47,15 @@ export default function Gallery() {
             {projects.map(project => (
               <div key={project.id}
                 className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all group">
-                {/* Thumbnail placeholder */}
-                <div className={`relative flex items-center justify-center bg-gradient-to-br from-purple-900/40 to-indigo-900/40 ${project.aspectRatio === "9:16" ? "aspect-[9/16]" : "aspect-[4/3]"}`}>
-                  <Film size={40} className="text-white/20" />
+                {/* Thumbnail */}
+                <div className={`relative overflow-hidden bg-gradient-to-br from-purple-900/40 to-indigo-900/40 ${project.aspectRatio === "9:16" ? "aspect-[9/16]" : "aspect-[4/3]"}`}>
+                  {(project as any).thumbnailUrl ? (
+                    <img src={(project as any).thumbnailUrl} alt={project.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Film size={40} className="text-white/20" />
+                    </div>
+                  )}
                   <div className="absolute top-2 right-2 bg-black/60 text-white/70 text-xs px-2 py-0.5 rounded-full">
                     {project.aspectRatio}
                   </div>

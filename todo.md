@@ -99,20 +99,20 @@
 - [x] All 18 tests still passing
 
 ## Feature: Thumbnail Generation
-- [ ] Add thumbnailUrl column to projects table in DB
-- [ ] Auto-capture canvas snapshot as thumbnail when publishing to gallery
-- [ ] Show thumbnail in Gallery project cards
-- [ ] Show thumbnail in Dashboard project cards
+- [x] Add thumbnailUrl column to projects table in DB
+- [x] Auto-capture canvas snapshot as thumbnail when publishing to gallery
+- [x] Show thumbnail in Gallery project cards
+- [x] Show thumbnail in Dashboard project cards
 
 ## Feature: Text/Caption Overlays
-- [ ] Add text layer type to layer schema (text, font, size, color, bold, italic, align)
-- [ ] Build TextLayer component with inline editing
-- [ ] Support animation on text layers (fade in/out, slide in, typewriter)
-- [ ] Render text layers in Editor canvas overlay
-- [ ] Render text layers in preview player
+- [x] Add text layer type to layer schema (text, font, size, color, bold, italic, align)
+- [x] Build TextLayer component with inline editing (drag, double-click to edit, font/color controls)
+- [x] Support animation on text layers (fade in/out, slide in, typewriter)
+- [x] Render text layers in Editor canvas overlay
+- [x] Render text layers in preview player (same canvas overlay)
 
 ## Feature: Audio in Export
-- [ ] Mix panel audio tracks into WebM export using Web Audio API
-- [ ] Mix project background music into WebM export
-- [ ] Sync audio timing with panel duration during export
-- [ ] Show audio status in export dialog
+- [x] Mix panel audio tracks into WebM export using Web Audio API
+- [x] Mix project background music into WebM export
+- [x] Sync audio timing with panel duration during export
+- [x] Show audio status in export dialog

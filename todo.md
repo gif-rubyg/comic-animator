@@ -40,7 +40,7 @@
 - [x] Export as WebM video using MediaRecorder API
 - [x] Export quality and FPS controls
 - [x] Export progress indicator
-- [ ] Test export end-to-end with real panels
+- [x] Test export end-to-end with real panels (canvas MediaRecorder export verified in browser)
 
 ## Phase 5: Polish & User Accounts
 - [x] User login/logout (via Manus OAuth)
@@ -63,3 +63,10 @@
 - [x] Add deployment guide (DEPLOY.md)
 - [x] Push all to GitHub
 - [x] 18 tests passing (animation engine + auth)
+
+## Bug Fix: Login Not Working
+- [x] Check if seed script ran and users exist in DB
+- [x] Check auth.login tRPC procedure for errors
+- [x] Check JWT_SECRET env var is set
+- [x] Fix login: added passwordHash column to live DB, re-ran seed script
+- [x] Verified login works for all 3 users via curl test

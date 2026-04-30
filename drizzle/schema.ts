@@ -25,6 +25,10 @@ export const projects = mysqlTable("projects", {
   userId: int("userId").notNull(),
   name: varchar("name", { length: 255 }).notNull().default("Untitled Project"),
   aspectRatio: mysqlEnum("aspectRatio", ["9:16", "4:3"]).notNull().default("9:16"),
+  isPublic: int("isPublic").notNull().default(0),
+  likesCount: int("likesCount").notNull().default(0),
+  bgMusicUrl: text("bgMusicUrl"),
+  bgMusicVolume: float("bgMusicVolume").notNull().default(0.8),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -43,17 +47,34 @@ export const panels = mysqlTable("panels", {
   duration: float("duration").notNull().default(3.0),
   transition: mysqlEnum("transition", ["none", "fade", "slide-left", "slide-right", "zoom-in", "zoom-out"]).notNull().default("fade"),
   transitionDuration: float("transitionDuration").notNull().default(0.5),
+  audioUrl: text("audioUrl"),
+  audioVolume: float("audioVolume").notNull().default(1.0),
   panZoom: json("panZoom").$type<{
     enabled: boolean;
     startX: number; startY: number; startScale: number;
     endX: number; endY: number; endScale: number;
   } | null>(),
+  speechBubbles: json("speechBubbles").$type<SpeechBubble[]>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Panel = typeof panels.$inferSelect;
 export type InsertPanel = typeof panels.$inferInsert;
+
+export interface SpeechBubble {
+  id: string;
+  text: string;
+  style: "speech" | "thought" | "shout" | "whisper";
+  tailDirection: "left" | "right" | "up" | "down" | "none";
+  x: number;       // % from left
+  y: number;       // % from top
+  width: number;   // % of canvas width
+  fontSize: number;
+  fontColor: string;
+  bgColor: string;
+  borderColor: string;
+}
 
 export type AnimationType =
   | "blink" | "wink-left" | "wink-right"

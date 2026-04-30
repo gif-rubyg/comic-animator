@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { Film, Plus, Trash2, Edit2, LogOut, Clock, Ratio, Pencil, User, Settings, KeyRound } from "lucide-react";
+import { Film, Plus, Trash2, Edit2, LogOut, Clock, Ratio, Pencil, User, Settings, KeyRound, Globe } from "lucide-react";
+import { Link } from "wouter";
 import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -102,6 +103,12 @@ export default function Dashboard() {
           <span className="text-xl font-bold sm:hidden">CA</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/gallery">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <Globe className="w-4 h-4" />
+              <span className="hidden sm:block">Gallery</span>
+            </Button>
+          </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">

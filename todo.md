@@ -70,3 +70,29 @@
 - [x] Check JWT_SECRET env var is set
 - [x] Fix login: added passwordHash column to live DB, re-ran seed script
 - [x] Verified login works for all 3 users via curl test
+
+## Feature: Speech Bubbles
+- [ ] Add speechBubbles JSON column to panels table in DB
+- [ ] Add tRPC procedures for saving/loading speech bubbles per panel
+- [ ] Build SpeechBubble canvas component (speech, thought, shout styles)
+- [ ] Add text editing (click to edit text, font size, color)
+- [ ] Add bubble positioning (drag to move on canvas)
+- [ ] Add bubble tail direction (left, right, up, down)
+- [ ] Render speech bubbles in preview player
+- [ ] Render speech bubbles in video export
+- [ ] Push to GitHub and save checkpoint
+
+## Feature: Shared Project Gallery
+- [ ] Add isPublic flag to projects table
+- [ ] Add tRPC procedure for listing public projects (all users)
+- [ ] Build Gallery page with project cards and preview thumbnails
+- [ ] Add "Publish to Gallery" toggle in Dashboard
+- [ ] Add "Like" counter on gallery items
+
+## Feature: Audio & Music Support
+- [ ] Add audioUrl and audioVolume columns to panels table
+- [ ] Add project-level bgMusicUrl and bgMusicVolume columns
+- [ ] Add audio upload endpoint (mp3, wav, ogg)
+- [ ] Build audio controls in Editor (upload, volume slider, preview)
+- [ ] Play audio during preview playback
+- [ ] Mix audio into exported video

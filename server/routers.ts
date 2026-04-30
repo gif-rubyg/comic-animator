@@ -11,6 +11,7 @@ import {
   getProjectsByUser, getProjectById, createProject, updateProject, deleteProject,
   getPanelsByProject, createPanel, updatePanel, deletePanel,
   getLayersByPanel, createLayer, updateLayer, deleteLayer,
+  getPublicProjects, likeProject,
 } from "./db";
 
 const LayerAnimationSchema = z.object({
@@ -26,6 +27,20 @@ const PanZoomSchema = z.object({
   startX: z.number(), startY: z.number(), startScale: z.number(),
   endX: z.number(), endY: z.number(), endScale: z.number(),
 }).nullable();
+
+const SpeechBubbleSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  style: z.enum(["speech", "thought", "shout", "whisper"]),
+  tailDirection: z.enum(["left", "right", "up", "down", "none"]),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  fontSize: z.number(),
+  fontColor: z.string(),
+  bgColor: z.string(),
+  borderColor: z.string(),
+});
 
 export const appRouter = router({
   system: systemRouter,
@@ -104,6 +119,9 @@ export const appRouter = router({
       id: z.number(),
       name: z.string().optional(),
       aspectRatio: z.enum(["9:16", "4:3"]).optional(),
+      isPublic: z.number().optional(),
+      bgMusicUrl: z.string().nullable().optional(),
+      bgMusicVolume: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const project = await getProjectById(id);
@@ -115,6 +133,17 @@ export const appRouter = router({
       const project = await getProjectById(input.id);
       if (!project || project.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
       await deleteProject(input.id);
+      return { success: true };
+    }),
+  }),
+
+  // ─── Gallery ──────────────────────────────────────────────────────────────
+  gallery: router({
+    list: publicProcedure.query(async () => {
+      return getPublicProjects();
+    }),
+    like: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await likeProject(input.id);
       return { success: true };
     }),
   }),
@@ -134,6 +163,9 @@ export const appRouter = router({
       transition: z.enum(["none", "fade", "slide-left", "slide-right", "zoom-in", "zoom-out"]).optional(),
       transitionDuration: z.number().optional(),
       panZoom: PanZoomSchema.optional(),
+      speechBubbles: z.array(SpeechBubbleSchema).optional(),
+      audioUrl: z.string().nullable().optional(),
+      audioVolume: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
       const project = await getProjectById(input.projectId);
       if (!project || project.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
@@ -148,6 +180,9 @@ export const appRouter = router({
       transition: z.enum(["none", "fade", "slide-left", "slide-right", "zoom-in", "zoom-out"]).optional(),
       transitionDuration: z.number().optional(),
       panZoom: PanZoomSchema.optional(),
+      speechBubbles: z.array(SpeechBubbleSchema).optional(),
+      audioUrl: z.string().nullable().optional(),
+      audioVolume: z.number().optional(),
     })).mutation(async ({ input }) => {
       const { id, ...data } = input;
       await updatePanel(id, data as any);

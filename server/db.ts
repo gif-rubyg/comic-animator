@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { users, projects, panels, layers } from "../drizzle/schema";
 import type { InsertUser, InsertProject, InsertPanel, InsertLayer } from "../drizzle/schema";
@@ -142,6 +142,36 @@ export async function deletePanel(id: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(layers).where(eq(layers.panelId, id));
   await db.delete(panels).where(eq(panels.id, id));
+}
+
+// ─── Gallery ─────────────────────────────────────────────────────────────────
+
+export async function getPublicProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      aspectRatio: projects.aspectRatio,
+      likesCount: projects.likesCount,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      userId: projects.userId,
+      userName: users.name,
+    })
+    .from(projects)
+    .leftJoin(users, eq(projects.userId, users.id))
+    .where(eq(projects.isPublic, 1))
+    .orderBy(desc(projects.updatedAt));
+}
+
+export async function likeProject(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(projects)
+    .set({ likesCount: sql`${projects.likesCount} + 1` })
+    .where(eq(projects.id, id));
 }
 
 // ─── Layers ──────────────────────────────────────────────────────────────────

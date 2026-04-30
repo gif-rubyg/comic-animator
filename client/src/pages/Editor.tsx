@@ -9,15 +9,17 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import {
-  Film, Plus, Trash2, ArrowLeft, Upload, Play, Pause,
+import { Film, Plus, Trash2, ArrowLeft, Upload, Play, Pause,
   Layers, Settings, ChevronUp, ChevronDown, FlipHorizontal,
-  Download, Eye, EyeOff
+  Download, Eye, EyeOff, Globe, MessageSquare, Music
 } from "lucide-react";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { ANIMATION_CATALOG, computeLayerState, stateToTransform, type LayerAnimation, type AnimationType } from "@/lib/animationEngine";
 import AnimationPreview from "@/components/AnimationPreview";
 import ExportDialog from "@/components/ExportDialog";
+import SpeechBubbleLayer from "@/components/SpeechBubbleLayer";
+import AudioPanel from "@/components/AudioPanel";
+import type { SpeechBubble } from "../../../drizzle/schema";
 
 interface LocalLayer {
   id: number;
@@ -40,6 +42,9 @@ interface LocalPanel {
   transition: string;
   transitionDuration: number;
   panZoom: any;
+  speechBubbles?: SpeechBubble[];
+  audioUrl?: string | null;
+  audioVolume?: number;
 }
 
 export default function Editor() {
@@ -55,6 +60,7 @@ export default function Editor() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playTime, setPlayTime] = useState(0);
   const [showExport, setShowExport] = useState(false);
+  const [showBubbles, setShowBubbles] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, lx: 0, ly: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -100,6 +106,9 @@ export default function Editor() {
   });
   const updatePanel = trpc.panels.update.useMutation({
     onSuccess: () => refetchPanels(),
+  });
+  const updateProject = trpc.projects.update.useMutation({
+    onError: (e) => toast.error(e.message),
   });
   const deletePanel = trpc.panels.delete.useMutation({
     onSuccess: () => { refetchPanels(); setSelectedPanelId(null); },
@@ -240,6 +249,20 @@ export default function Editor() {
           <span className="font-semibold text-sm truncate">{project?.name || "Loading..."}</span>
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{project?.aspectRatio}</span>
         </div>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => {
+            if (!project) return;
+            const newVal = project.isPublic ? 0 : 1;
+            updateProject.mutate({ id: project.id, isPublic: newVal });
+            toast.success(newVal ? "Published to gallery!" : "Removed from gallery");
+          }}
+          className="gap-2"
+          title={project?.isPublic ? "Remove from Gallery" : "Publish to Gallery"}
+        >
+          <Globe className="w-4 h-4" />
+          {project?.isPublic ? "Published" : "Publish"}
+        </Button>
         <Button size="sm" variant="outline" onClick={() => setShowExport(true)} className="gap-2">
           <Download className="w-4 h-4" />
           Export Reel
@@ -327,6 +350,19 @@ export default function Editor() {
                   </div>
                 )}
 
+                {/* Speech Bubbles overlay */}
+                {showBubbles && selectedPanel && (
+                  <SpeechBubbleLayer
+                    bubbles={selectedPanel.speechBubbles || []}
+                    canvasWidth={canvasW}
+                    canvasHeight={canvasH}
+                    onChange={async (bubbles) => {
+                      setPanels(prev => prev.map(p => p.id === selectedPanel.id ? { ...p, speechBubbles: bubbles } : p));
+                      await updatePanel.mutateAsync({ id: selectedPanel.id, speechBubbles: bubbles });
+                    }}
+                  />
+                )}
+
                 {/* Layers */}
                 {layers.map((layer) => {
                   const state = computeLayerState(playTime, layer.animations || [], canvasW);
@@ -377,6 +413,13 @@ export default function Editor() {
                   <span>/</span>
                   <span>{selectedPanel.duration}s</span>
                 </div>
+                <Button size="sm" variant="ghost"
+                  onClick={() => setShowBubbles(v => !v)}
+                  className="gap-1 text-xs"
+                  title="Toggle speech bubbles visibility">
+                  <MessageSquare className="w-3 h-3" />
+                  {showBubbles ? "Hide Bubbles" : "Show Bubbles"}
+                </Button>
               </div>
             </div>
           ) : (
@@ -440,6 +483,35 @@ export default function Editor() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Panel Audio */}
+                  <div className="space-y-2">
+                    <Label className="text-xs flex items-center gap-1"><Music className="w-3 h-3" /> Panel Audio</Label>
+                    <AudioPanel
+                      label="Panel Audio"
+                      audioUrl={selectedPanel.audioUrl}
+                      volume={selectedPanel.audioVolume ?? 1}
+                      onAudioChange={(url, vol) => {
+                        setPanels(prev => prev.map(p => p.id === selectedPanel.id ? { ...p, audioUrl: url, audioVolume: vol } : p));
+                        updatePanel.mutate({ id: selectedPanel.id, audioUrl: url, audioVolume: vol });
+                      }}
+                    />
+                  </div>
+
+                  {/* Project Background Music */}
+                  {project && (
+                    <div className="space-y-2">
+                      <Label className="text-xs flex items-center gap-1"><Music className="w-3 h-3" /> Background Music</Label>
+                      <AudioPanel
+                        label="Project BG Music"
+                        audioUrl={(project as any).bgMusicUrl}
+                        volume={(project as any).bgMusicVolume ?? 0.8}
+                        onAudioChange={(url, vol) => {
+                          updateProject.mutate({ id: project.id, bgMusicUrl: url, bgMusicVolume: vol });
+                        }}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-8">Select a panel first</p>

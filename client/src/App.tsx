@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Editor from "./pages/Editor";
 import Login from "./pages/Login";
+import Gallery from "./pages/Gallery";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/editor/:projectId" component={Editor} />
+      <Route path="/gallery" component={Gallery} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
